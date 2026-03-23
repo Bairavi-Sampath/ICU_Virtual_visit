@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Video, Calendar, FileText, Phone, ChevronDown } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -40,22 +39,38 @@ export function PatientCard({ patient, onStartCall, onRefresh }: PatientCardProp
     }
   };
 
+  const isCritical = patient.status === 'critical';
+
   return (
     <>
-      <Card className={cn(
-        "group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1",
-        patient.call_active && "ring-2 ring-emerald-500 ring-offset-2"
+      <div className={cn(
+        "glass-card relative overflow-hidden rounded-2xl transition-all duration-300",
+        isCritical && "animate-pulse-critical",
+        patient.call_active && "ring-2 ring-emerald-500/50 ring-offset-2 ring-offset-background"
       )}>
+        {/* Top accent bar */}
+        <div className={cn(
+          "h-1 w-full",
+          patient.status === 'stable' && "bg-gradient-to-r from-emerald-400 to-emerald-500",
+          patient.status === 'recovering' && "bg-gradient-to-r from-amber-400 to-amber-500",
+          patient.status === 'critical' && "bg-gradient-to-r from-red-400 to-red-500"
+        )} />
+
         {/* Call Active Indicator */}
         {patient.call_active && (
-          <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500 animate-pulse-soft" />
+          <div className="absolute top-3 right-3 z-10">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/90 text-white text-xs font-medium shadow-lg">
+              <span className="w-2 h-2 rounded-full bg-white animate-blink" />
+              LIVE
+            </div>
+          </div>
         )}
 
-        <CardContent className="p-6">
+        <div className="p-6">
           {/* Header */}
-          <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start justify-between mb-5">
             <div>
-              <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
+              <h3 className="text-lg font-semibold text-foreground mb-1 tracking-tight">
                 {patient.name}
               </h3>
               <p className="text-sm text-muted-foreground">Room {patient.room_number}</p>
@@ -65,46 +80,51 @@ export function PatientCard({ patient, onStartCall, onRefresh }: PatientCardProp
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50"
+                  className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
                   disabled={statusLoading}
                 >
                   <StatusBadge status={patient.status} />
-                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-36">
-                <DropdownMenuItem onClick={() => handleStatusChange('stable')}>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2" />
+              <DropdownMenuContent align="end" className="w-40 glass border-border/50">
+                <DropdownMenuItem onClick={() => handleStatusChange('stable')} className="gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                   Stable
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusChange('recovering')}>
-                  <span className="w-2 h-2 rounded-full bg-amber-500 mr-2" />
+                <DropdownMenuItem onClick={() => handleStatusChange('recovering')} className="gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                   Recovering
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusChange('critical')}>
-                  <span className="w-2 h-2 rounded-full bg-red-500 mr-2" />
+                <DropdownMenuItem onClick={() => handleStatusChange('critical')} className="gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
                   Critical
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
 
-          {/* Call Active Indicator */}
+          {/* Call Active Banner */}
           {patient.call_active && (
-            <div className="flex items-center gap-2 mb-4 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
-              <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 animate-pulse-soft" />
+            <div className="flex items-center gap-3 mb-5 p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-950/40 dark:to-emerald-900/20 border border-emerald-200/50 dark:border-emerald-800/50">
+              <div className="relative">
+                <Phone className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 animate-blink" />
+              </div>
               <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                Call Active
+                Video call in progress
               </span>
             </div>
           )}
 
           {/* Scheduled Visit */}
           {patient.scheduled_visit && (
-            <div className="flex items-center justify-between mb-4 p-3 rounded-lg bg-muted/50 border border-border/50">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-primary" />
-                <span className="text-sm text-muted-foreground">Next Visit</span>
+            <div className="flex items-center justify-between mb-5 p-4 rounded-xl bg-muted/30 border border-border/30">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Calendar className="w-4 h-4 text-primary" />
+                </div>
+                <span className="text-sm font-medium text-muted-foreground">Next Visit</span>
               </div>
               <CountdownTimer targetDate={patient.scheduled_visit} />
             </div>
@@ -112,32 +132,32 @@ export function PatientCard({ patient, onStartCall, onRefresh }: PatientCardProp
 
           {/* Notes Preview */}
           {patient.notes.length > 0 && (
-            <div className="mb-4 p-3 rounded-lg bg-muted/30 border border-border/30">
-              <p className="text-sm text-muted-foreground line-clamp-2">
+            <div className="mb-5 p-4 rounded-xl bg-muted/20 border border-border/20">
+              <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                 {patient.notes[0].content}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground/70 mt-2 font-medium">
                 {patient.notes.length} note{patient.notes.length !== 1 && 's'}
               </p>
             </div>
           )}
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-3">
             <Button
               onClick={() => onStartCall(patient.id)}
               size="lg"
-              className="flex-1 min-w-[120px] h-12 bg-primary hover:bg-primary/90 shadow-md shadow-primary/20 transition-all duration-200 hover:shadow-lg hover:shadow-primary/30"
+              className="flex-1 min-w-[100px] h-12 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 rounded-xl btn-premium"
             >
               <Video className="w-4 h-4 mr-2" />
-              {patient.call_active ? 'Join Call' : 'Start Call'}
+              {patient.call_active ? 'Join' : 'Call'}
             </Button>
             
             <Button
               variant="outline"
               size="lg"
               onClick={() => setScheduleOpen(true)}
-              className="flex-1 min-w-[120px] h-12 hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+              className="flex-1 min-w-[100px] h-12 rounded-xl border-border/50 hover:bg-accent/50 hover:border-accent transition-all duration-300"
             >
               <Calendar className="w-4 h-4 mr-2" />
               Schedule
@@ -147,14 +167,14 @@ export function PatientCard({ patient, onStartCall, onRefresh }: PatientCardProp
               variant="outline"
               size="lg"
               onClick={() => setNotesOpen(true)}
-              className="flex-1 min-w-[120px] h-12 hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+              className="flex-1 min-w-[100px] h-12 rounded-xl border-border/50 hover:bg-accent/50 hover:border-accent transition-all duration-300"
             >
               <FileText className="w-4 h-4 mr-2" />
               Notes
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <ScheduleModal
         patient={patient}
