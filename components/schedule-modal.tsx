@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Clock, X, Check } from 'lucide-react';
+import { Calendar, Clock, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { scheduleVisit, type Patient } from '@/lib/api';
-import { cn } from '@/lib/utils';
 
 interface ScheduleModalProps {
   patient: Patient;
@@ -48,6 +47,7 @@ export function ScheduleModal({ patient, open, onOpenChange, onSuccess }: Schedu
       });
       onSuccess();
       onOpenChange(false);
+      // Reset form
       setDate('');
       setTime('');
       setDuration('30');
@@ -58,35 +58,25 @@ export function ScheduleModal({ patient, open, onOpenChange, onSuccess }: Schedu
     }
   };
 
+  // Get minimum date (today)
   const today = new Date().toISOString().split('T')[0];
-
-  const durations = [
-    { value: '15', label: '15 min' },
-    { value: '30', label: '30 min' },
-    { value: '45', label: '45 min' },
-    { value: '60', label: '60 min' },
-  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md glass-card border-0 rounded-2xl shadow-2xl shadow-primary/10 animate-fade-in">
-        <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-accent rounded-t-2xl -mt-6 -mx-6 mb-2" />
-        
-        <DialogHeader className="pb-2">
-          <DialogTitle className="flex items-center gap-3 text-xl">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-primary" />
-            </div>
+      <DialogContent className="sm:max-w-md glass animate-fade-in">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <Calendar className="w-5 h-5 text-primary" />
             Schedule Visit
           </DialogTitle>
-          <DialogDescription className="text-base">
-            Schedule a virtual visit for <span className="font-semibold text-foreground">{patient.name}</span>
+          <DialogDescription>
+            Schedule a virtual visit for <span className="font-medium text-foreground">{patient.name}</span> in room {patient.room_number}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6 mt-2">
+        <form onSubmit={handleSubmit} className="space-y-5 mt-4">
           <div className="space-y-2">
-            <Label htmlFor="date" className="text-sm font-semibold">
+            <Label htmlFor="date" className="text-sm font-medium">
               Date
             </Label>
             <div className="relative">
@@ -96,16 +86,14 @@ export function ScheduleModal({ patient, open, onOpenChange, onSuccess }: Schedu
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 min={today}
-                className="pl-12 h-14 text-base rounded-xl border-border/50 bg-muted/20 focus:bg-background transition-all duration-300"
+                className="pl-10 h-12"
               />
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg bg-muted/50 flex items-center justify-center">
-                <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-              </div>
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="time" className="text-sm font-semibold">
+            <Label htmlFor="time" className="text-sm font-medium">
               Time
             </Label>
             <div className="relative">
@@ -114,39 +102,31 @@ export function ScheduleModal({ patient, open, onOpenChange, onSuccess }: Schedu
                 type="time"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="pl-12 h-14 text-base rounded-xl border-border/50 bg-muted/20 focus:bg-background transition-all duration-300"
+                className="pl-10 h-12"
               />
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg bg-muted/50 flex items-center justify-center">
-                <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-              </div>
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-semibold">
-              Duration
+            <Label htmlFor="duration" className="text-sm font-medium">
+              Duration (minutes)
             </Label>
-            <div className="grid grid-cols-4 gap-2">
-              {durations.map((d) => (
-                <button
-                  key={d.value}
-                  type="button"
-                  onClick={() => setDuration(d.value)}
-                  className={cn(
-                    "h-12 rounded-xl font-semibold text-sm transition-all duration-300 border-2",
-                    duration === d.value
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border/50 bg-muted/20 hover:border-primary/30 hover:bg-primary/5"
-                  )}
-                >
-                  {d.label}
-                </button>
-              ))}
-            </div>
+            <select
+              id="duration"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <option value="15">15 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="45">45 minutes</option>
+              <option value="60">60 minutes</option>
+            </select>
           </div>
 
           {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200/50 dark:border-red-800/50 rounded-xl text-sm text-red-700 dark:text-red-400 font-medium animate-slide-up">
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
               {error}
             </div>
           )}
@@ -156,7 +136,7 @@ export function ScheduleModal({ patient, open, onOpenChange, onSuccess }: Schedu
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="flex-1 h-14 rounded-xl border-border/50 font-semibold"
+              className="flex-1 h-12"
             >
               <X className="w-4 h-4 mr-2" />
               Cancel
@@ -164,7 +144,7 @@ export function ScheduleModal({ patient, open, onOpenChange, onSuccess }: Schedu
             <Button
               type="submit"
               disabled={loading}
-              className="flex-1 h-14 rounded-xl bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg shadow-primary/20 font-semibold btn-premium"
+              className="flex-1 h-12 bg-primary hover:bg-primary/90"
             >
               {loading ? (
                 <>
@@ -173,7 +153,7 @@ export function ScheduleModal({ patient, open, onOpenChange, onSuccess }: Schedu
                 </>
               ) : (
                 <>
-                  <Check className="w-4 h-4 mr-2" />
+                  <Calendar className="w-4 h-4 mr-2" />
                   Schedule
                 </>
               )}
