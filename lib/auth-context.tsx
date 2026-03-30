@@ -28,10 +28,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Simple validation (in production, this would call a real API)
     if (username.length >= 3 && password.length >= 4) {
+      let patientId: string | undefined;
+      if (role === 'family') {
+        try {
+          const response = await fetch(`/api/family/default-patient?username=${encodeURIComponent(username)}`);
+          if (response.ok) {
+            const data = await response.json();
+            patientId = data.patientId ?? undefined;
+          }
+        } catch {
+          patientId = undefined;
+        }
+      }
+
       setUser({
         username,
         role,
-        patientId: role === 'family' ? '1' : undefined // Mock: assign first patient to family
+        patientId
       });
       return true;
     }

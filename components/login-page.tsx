@@ -208,7 +208,17 @@ export function LoginPage() {
               </Button>
             </form>
 
-            <p className="text-center text-xs text-muted-foreground pt-2">
+            {/* Sign Up Link */}
+            <div className="text-center pt-2 border-t border-border/20">
+              <p className="text-sm text-muted-foreground">
+                Don't have an account?{' '}
+                <a href="/signup" className="text-primary font-semibold hover:underline transition-colors">
+                  Create one now
+                </a>
+              </p>
+            </div>
+
+            <p className="text-center text-xs text-muted-foreground">
               By signing in, you agree to our Terms of Service and Privacy Policy
             </p>
           </div>

@@ -24,6 +24,33 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+## Neon Database Setup
+
+1. Create a Neon project and copy your connection string.
+2. Create a local env file:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Set your database URL in `.env.local`:
+
+```bash
+DATABASE_URL=postgresql://<user>:<password>@<host>/<database>?sslmode=require
+```
+
+4. Start the app:
+
+```bash
+npm run dev
+```
+
+5. Test the Neon connection:
+
+`GET /api/db/ping`
+
+If the connection works, the response returns `ok: true` and the current database timestamp.
+
 ## Learn More
 
 To learn more, take a look at the following resources:

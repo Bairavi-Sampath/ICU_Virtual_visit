@@ -59,7 +59,7 @@ export function FamilyDashboard() {
     try {
       const callData = await startCall(patient.id);
       showToast('Joining video call...', 'success');
-      router.push(`/call?link=${encodeURIComponent(callData.call_link)}&room=${callData.room_name}&patientId=${patient.id}`);
+      router.push(`/call?link=${encodeURIComponent(callData.call_link)}&room=${callData.room_name}&patientId=${patient.id}&name=${encodeURIComponent(user?.username || 'Family Member')}`);
     } catch (error) {
       console.error('Failed to join call:', error);
       showToast('Failed to join video call', 'error');

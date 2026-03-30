@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 
-type Status = 'stable' | 'recovering' | 'critical';
+type Status = 'stable' | 'recovering' | 'critical' | 'recovered' | 'discharged';
 
 interface StatusBadgeProps {
   status: Status;
@@ -34,6 +34,22 @@ const statusConfig = {
     dotClass: 'bg-red-500',
     shadowClass: 'shadow-red-500/30',
     borderClass: 'border-red-200/50 dark:border-red-800/50'
+  },
+  recovered: {
+    label: 'Recovered',
+    bgClass: 'bg-gradient-to-r from-blue-100 to-blue-50 dark:from-blue-950/60 dark:to-blue-900/30',
+    textClass: 'text-blue-700 dark:text-blue-400',
+    dotClass: 'bg-blue-500',
+    shadowClass: 'shadow-blue-500/20',
+    borderClass: 'border-blue-200/50 dark:border-blue-800/50'
+  },
+  discharged: {
+    label: 'Discharged',
+    bgClass: 'bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-950/60 dark:to-gray-900/30',
+    textClass: 'text-gray-700 dark:text-gray-400',
+    dotClass: 'bg-gray-500',
+    shadowClass: 'shadow-gray-500/20',
+    borderClass: 'border-gray-200/50 dark:border-gray-800/50'
   }
 };
 

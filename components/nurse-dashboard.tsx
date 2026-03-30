@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, Search, Users, AlertCircle, CheckCircle, Clock, Activity } from 'lucide-react';
+import { RefreshCw, Search, Users, AlertCircle, CheckCircle, Clock, Activity, Plus } from 'lucide-react';
 import { Header } from '@/components/header';
 import { PatientCard } from '@/components/patient-card';
+import { AddPatientModal } from '@/components/add-patient-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,17 +20,22 @@ export function NurseDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
 
   const fetchPatients = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
+    // Only show loading state on initial load, not on background refreshes
+    if (!isRefresh) setLoading(true);
+    else setRefreshing(true);
     
     try {
       const data = await getPatients();
       setPatients(data);
     } catch (error) {
       console.error('Failed to fetch patients:', error);
-      showToast('Failed to load patients', 'error');
+      // Only show toast on manual refresh, not on background refresh
+      if (isRefresh) {
+        showToast('Failed to load patients', 'error');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -38,16 +44,23 @@ export function NurseDashboard() {
 
   useEffect(() => {
     fetchPatients();
+    // Auto-refresh every 10 seconds to detect call status changes (silent background refresh)
+    const interval = setInterval(() => {
+      fetchPatients(true); // Pass true to indicate background refresh (no visual loader)
+    }, 10000);
+    return () => clearInterval(interval);
   }, [fetchPatients]);
 
   const handleStartCall = async (patientId: string) => {
     try {
       const callData = await startCall(patientId);
       showToast('Video call started successfully!', 'success');
-      router.push(`/call?link=${encodeURIComponent(callData.call_link)}&room=${callData.room_name}&patientId=${patientId}`);
+      router.push(`/call?link=${encodeURIComponent(callData.call_link)}&room=${callData.room_name}&patientId=${patientId}&name=${encodeURIComponent('Nurse')}`);
     } catch (error) {
-      console.error('Failed to start call:', error);
-      showToast('Failed to start video call', 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Failed to start call - Full error:', error);
+      console.error('Error message:', errorMessage);
+      showToast(`Failed to start video call: ${errorMessage}`, 'error');
     }
   };
 
@@ -56,17 +69,31 @@ export function NurseDashboard() {
     showToast('Patient list refreshed', 'info');
   };
 
-  const filteredPatients = patients.filter(patient =>
+  // Separate active and archived patients
+  const activePatients = patients.filter(
+    patient => patient.status !== 'recovered' && patient.status !== 'discharged'
+  );
+
+  const archivedPatients = patients.filter(
+    patient => patient.status === 'recovered' || patient.status === 'discharged'
+  );
+
+  const filteredActivePatients = activePatients.filter(patient =>
+    patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    patient.room_number.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredArchivedPatients = archivedPatients.filter(patient =>
     patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     patient.room_number.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const stats = {
-    total: patients.length,
-    stable: patients.filter(p => p.status === 'stable').length,
-    recovering: patients.filter(p => p.status === 'recovering').length,
-    critical: patients.filter(p => p.status === 'critical').length,
-    activeCalls: patients.filter(p => p.call_active).length
+    total: activePatients.length,
+    stable: activePatients.filter(p => p.status === 'stable').length,
+    recovering: activePatients.filter(p => p.status === 'recovering').length,
+    critical: activePatients.filter(p => p.status === 'critical').length,
+    activeCalls: activePatients.filter(p => p.call_active).length
   };
 
   return (
@@ -166,15 +193,24 @@ export function NurseDashboard() {
               className="pl-12 h-14 text-base glass-card border-0 rounded-xl shadow-sm focus:shadow-md transition-shadow"
             />
           </div>
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="h-14 px-6 gap-3 w-full sm:w-auto glass-card border-0 rounded-xl hover:bg-primary/5 transition-all duration-300"
-          >
-            <RefreshCw className={cn("w-5 h-5", refreshing && "animate-spin")} />
-            <span className="font-medium">Refresh</span>
-          </Button>
+          <div className="flex gap-3 w-full sm:w-auto">
+            <Button
+              onClick={() => setAddPatientModalOpen(true)}
+              className="h-14 px-6 gap-2 flex-1 sm:flex-none bg-gradient-to-r from-primary to-primary/90 hover:shadow-lg hover:shadow-primary/30 rounded-xl font-medium transition-all duration-300"
+            >
+              <Plus className="w-5 h-5" />
+              Add Patient
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="h-14 px-6 gap-3 flex-1 sm:flex-none glass-card border-0 rounded-xl hover:bg-primary/5 transition-all duration-300"
+            >
+              <RefreshCw className={cn("w-5 h-5", refreshing && "animate-spin")} />
+              <span className="font-medium">Refresh</span>
+            </Button>
+          </div>
         </div>
 
         {/* Patient Cards Grid */}
@@ -198,7 +234,7 @@ export function NurseDashboard() {
               </div>
             ))}
           </div>
-        ) : filteredPatients.length === 0 ? (
+        ) : filteredActivePatients.length === 0 && filteredArchivedPatients.length === 0 ? (
           <div className="text-center py-20 glass-card rounded-2xl animate-fade-in">
             <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-muted/50 flex items-center justify-center">
               <Users className="w-10 h-10 text-muted-foreground" />
@@ -209,22 +245,68 @@ export function NurseDashboard() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPatients.map((patient, index) => (
-              <div 
-                key={patient.id} 
-                className="animate-slide-up"
-                style={{ animationDelay: `${index * 0.05}s` }}
-              >
-                <PatientCard
-                  patient={patient}
-                  onStartCall={handleStartCall}
-                  onRefresh={() => fetchPatients(true)}
-                />
+          <div className="space-y-8">
+            {/* Active Patients Section */}
+            {filteredActivePatients.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                  <div className="w-1 h-8 bg-gradient-to-b from-primary to-primary/50 rounded-full" />
+                  Active Patients
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredActivePatients.map((patient, index) => (
+                    <div 
+                      key={patient.id} 
+                      className="animate-slide-up"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      <PatientCard
+                        patient={patient}
+                        onStartCall={handleStartCall}
+                        onRefresh={() => fetchPatients(true)}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
+
+            {/* Archived Patients Section */}
+            {filteredArchivedPatients.length > 0 && (
+              <div className="opacity-60">
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-3 text-muted-foreground">
+                  <div className="w-1 h-8 bg-gradient-to-b from-muted-foreground to-muted-foreground/50 rounded-full" />
+                  Archived Patients
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredArchivedPatients.map((patient, index) => (
+                    <div 
+                      key={patient.id} 
+                      className="animate-slide-up"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      <PatientCard
+                        patient={patient}
+                        onStartCall={handleStartCall}
+                        onRefresh={() => fetchPatients(true)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
+
+        {/* Add Patient Modal */}
+        <AddPatientModal
+          open={addPatientModalOpen}
+          onOpenChange={setAddPatientModalOpen}
+          onSuccess={() => {
+            setAddPatientModalOpen(false);
+            fetchPatients(true);
+          }}
+        />
       </main>
     </div>
   );

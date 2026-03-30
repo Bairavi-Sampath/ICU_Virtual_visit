@@ -1,10 +1,10 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export interface Patient {
   id: string;
   name: string;
   room_number: string;
-  status: 'stable' | 'recovering' | 'critical';
+  status: 'stable' | 'recovering' | 'critical' | 'recovered' | 'discharged';
   scheduled_visit?: string;
   notes: Note[];
   call_active?: boolean;
@@ -101,7 +101,7 @@ export async function getPatients(): Promise<Patient[]> {
 
 export async function getPatientStatus(patientId: string): Promise<Patient> {
   try {
-    const response = await fetch(`${API_BASE_URL}/status/${patientId}`);
+    const response = await fetch(`${API_BASE_URL}/patients/${patientId}`);
     if (!response.ok) throw new Error('Failed to fetch patient status');
     return response.json();
   } catch {
@@ -112,28 +112,22 @@ export async function getPatientStatus(patientId: string): Promise<Patient> {
 }
 
 export async function startCall(patientId: string): Promise<CallData> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/start-call/${patientId}`, {
-      method: 'POST',
-    });
-    if (!response.ok) throw new Error('Failed to start call');
-    return response.json();
-  } catch {
-    // Return mock call data
-    const roomName = `icu-visit-${patientId}-${Date.now()}`;
-    patients = patients.map(p => 
-      p.id === patientId ? { ...p, call_active: true } : p
-    );
-    return {
-      call_link: `https://meet.jit.si/${roomName}`,
-      room_name: roomName
-    };
+  const response = await fetch(`${API_BASE_URL}/patients/${patientId}/call`, {
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const message = payload?.message || 'Failed to start call';
+    throw new Error(message);
   }
+
+  return response.json();
 }
 
 export async function scheduleVisit(patientId: string, data: ScheduleVisitData): Promise<{ success: boolean }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/schedule/${patientId}`, {
+    const response = await fetch(`${API_BASE_URL}/patients/${patientId}/schedule`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -152,7 +146,7 @@ export async function scheduleVisit(patientId: string, data: ScheduleVisitData):
 
 export async function addNote(patientId: string, content: string): Promise<Note> {
   try {
-    const response = await fetch(`${API_BASE_URL}/add-note/${patientId}`, {
+    const response = await fetch(`${API_BASE_URL}/patients/${patientId}/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),
@@ -176,7 +170,7 @@ export async function addNote(patientId: string, content: string): Promise<Note>
 
 export async function updatePatientStatus(patientId: string, status: Patient['status']): Promise<{ success: boolean }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/status/${patientId}`, {
+    const response = await fetch(`${API_BASE_URL}/patients/${patientId}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
@@ -192,8 +186,28 @@ export async function updatePatientStatus(patientId: string, status: Patient['st
 }
 
 export async function endCall(patientId: string): Promise<{ success: boolean }> {
-  patients = patients.map(p => 
-    p.id === patientId ? { ...p, call_active: false } : p
-  );
-  return { success: true };
+  try {
+    // Call the backend API to properly end the call in the database
+    const response = await fetch(`/api/patients/${patientId}/call`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to end call: ${response.statusText}`);
+    }
+
+    // Also update local state for immediate UI feedback
+    patients = patients.map(p => 
+      p.id === patientId ? { ...p, call_active: false } : p
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error ending call:', error);
+    // Still update local state even if API call fails
+    patients = patients.map(p => 
+      p.id === patientId ? { ...p, call_active: false } : p
+    );
+    return { success: true };
+  }
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Video, Calendar, FileText, Phone, ChevronDown } from 'lucide-react';
+import { Video, Calendar, FileText, Phone, ChevronDown, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -9,10 +9,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { StatusBadge } from '@/components/status-badge';
 import { CountdownTimer } from '@/components/countdown-timer';
 import { ScheduleModal } from '@/components/schedule-modal';
 import { NotesModal } from '@/components/notes-modal';
+import { useToast } from '@/components/toast-provider';
 import { updatePatientStatus, type Patient } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -23,9 +33,12 @@ interface PatientCardProps {
 }
 
 export function PatientCard({ patient, onStartCall, onRefresh }: PatientCardProps) {
+  const { showToast } = useToast();
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleStatusChange = async (newStatus: Patient['status']) => {
     setStatusLoading(true);
@@ -39,6 +52,31 @@ export function PatientCard({ patient, onStartCall, onRefresh }: PatientCardProp
     }
   };
 
+  const handleDelete = async () => {
+    setDeleteLoading(true);
+    try {
+      const response = await fetch(`/api/patients/delete/${patient.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to delete patient');
+      }
+
+      showToast(`Patient ${patient.name} has been deleted successfully.`, 'success');
+
+      setDeleteDialogOpen(false);
+      onRefresh();
+    } catch (error) {
+      console.error('🗑️ Error deleting patient:', error);
+      showToast(error instanceof Error ? error.message : 'Failed to delete patient', 'error');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const isDeletable = patient.status === 'recovered' || patient.status === 'discharged';
   const isCritical = patient.status === 'critical';
 
   return (
@@ -104,6 +142,10 @@ export function PatientCard({ patient, onStartCall, onRefresh }: PatientCardProp
                 <DropdownMenuItem onClick={() => handleStatusChange('critical')} className="gap-3">
                   <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-lg shadow-red-500/30" />
                   Critical
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleStatusChange('recovered')} className="gap-3">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-lg shadow-blue-500/30" />
+                  Recovered
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -186,6 +228,19 @@ export function PatientCard({ patient, onStartCall, onRefresh }: PatientCardProp
               <FileText className="w-4 h-4 mr-2" />
               Notes
             </Button>
+
+            {isDeletable && (
+              <Button
+                variant="destructive"
+                size="lg"
+                onClick={() => setDeleteDialogOpen(true)}
+                disabled={deleteLoading}
+                className="flex-1 min-w-[100px] h-13 rounded-xl bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/25 font-medium"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -203,6 +258,27 @@ export function PatientCard({ patient, onStartCall, onRefresh }: PatientCardProp
         onOpenChange={setNotesOpen}
         onSuccess={onRefresh}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="glass border-border/50 backdrop-blur-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl text-foreground">Delete Patient</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              Are you sure you want to delete <span className="font-semibold text-foreground">{patient.name}</span> (Room {patient.room_number})? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogCancel disabled={deleteLoading} className="rounded-lg border-border/50">
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDelete}
+            disabled={deleteLoading}
+            className="rounded-lg bg-red-600 hover:bg-red-700 text-white"
+          >
+            {deleteLoading ? 'Deleting...' : 'Delete'}
+          </AlertDialogAction>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
